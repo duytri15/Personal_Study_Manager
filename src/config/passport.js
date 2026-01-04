@@ -1,7 +1,18 @@
 import passport from "passport";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { findOrCreateGoogleUser } from "../models/userModel.js";
 
+const formatDisplayName = (name) => {
+    return name
+        .normalize("NFD") // Tách dấu ra khỏi chữ cái
+        .replace(/[\u0300-\u036f]/g, "") // Xóa các dấu vừa tách
+        .replace(/đ/g, "d") // Xử lý chữ đ
+        .replace(/Đ/g, "D")
+        .trim() // Xóa khoảng trắng thừa ở đầu/cuối
+        .replace(/\s+/g, "_"); // Thay thế khoảng trắng ở giữa bằng dấu gạch dưới
+};
 passport.use(
     new GoogleStrategy(
         {
@@ -12,10 +23,11 @@ passport.use(
         },
         async (accessToken, refreshToken, profile, done) => {
             try {
+                const formattedName = formatDisplayName(profile.displayName);
                 const user = await findOrCreateGoogleUser(
                     profile.id,
                     profile.emails[0].value,
-                    profile.displayName
+                    formattedName
                 );
                 return done(null, user);
             } catch (err) {

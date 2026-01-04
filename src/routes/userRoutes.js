@@ -7,10 +7,11 @@ import {
     updateUser,
     deleteUser,
 } from "../controllers/userController.js";
-
+import { verifyToken } from "../middlewares/authMiddleware.js";
+import jwt from "jsonwebtoken"; 
 const router = express.Router();
 
-router.get("/user", getAllUser);
+router.get("/user",verifyToken, getAllUser);
 router.get("/user/:id", getUserById);
 router.post("/user", createUser);
 router.put("/user/:id", updateUser);
@@ -30,13 +31,22 @@ router.get(
     "/auth/google/callback",
     passport.authenticate("google", {
         failureRedirect: "/api/auth/login-failed",
+        session: false,
     }),
     (req, res) => {
-        // Thay vì res.redirect(...), bạn trả về JSON
+        const user = req.user;
+        // 2. Tạo JWT Token
+        const token = jwt.sign(
+            { id: user.id, email: user.email }, // Payload
+            process.env.JWT_SECRET || "your_jwt_secret", // Secret key
+            { expiresIn: "1d" } // Thời hạn token
+        );
+        // 3. Trả về JSON chứa Token
         res.status(200).json({
-            success: true,
-            message: "Đăng nhập thành công!",
-            user: req.user, // Trả về thông tin user đã lưu trong DB
+            status: 1,
+            message: "Đăng nhập Google thành công!",
+            token: token, // Client sẽ lưu token này vào LocalStorage/Cookie
+            user: user,
         });
     }
 );
